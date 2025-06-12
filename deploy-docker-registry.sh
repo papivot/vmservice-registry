@@ -1,6 +1,8 @@
 #!/bin/bash
 
 set -euo pipefail
+CERT_CHOICE=""
+critical_error=0
 
 # --- Logging Functions ---
 log_info() {
