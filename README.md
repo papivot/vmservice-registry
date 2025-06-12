@@ -72,7 +72,7 @@ The `deploy-docker-registry.sh` script performs the following actions:
 
 The script will prompt you for the following information:
 
-1.  **VSPHERE NAMESPACE**: The Kubernetes namespace in your vSphere with Tanzu environment where the registry and its associated resources will be deployed.
+1.  **VSPHERE NAMESPACE**: The vSphere Namespace in your vSphere Supervisor environment where the registry and its associated resources will be deployed.
 2.  **STORAGECLASS**: The name of the Kubernetes StorageClass to be used for the registry's persistent storage.
 3.  **HOSTNAME**: The fully qualified domain name (FQDN) for your registry (e.g., `registry.yourcompany.com`). This will be used for the TLS certificate.
 4.  **USERNAME**: The username used for authenticating to the Docker registry (for pushing and pulling images).
