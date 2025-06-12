@@ -1,6 +1,6 @@
 # Docker Registry Deployment Script for vSphere Supervisor
 
-This script automates the deployment of a private Docker registry on a vSphere with Tanzu Kubernetes cluster. It sets up a Virtual Machine, configures it with Docker, and runs the official Docker registry image, making it accessible via a LoadBalancer service.
+This script automates the deployment of a private Docker registry on a vSphere Supervisor. It sets up a Virtual Machine, configures it with Docker, and runs the official Docker registry image, making it accessible via a LoadBalancer service.
 
 ## Table of Contents
 
