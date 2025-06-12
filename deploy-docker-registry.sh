@@ -68,18 +68,38 @@ if [ -z "$NAMESPACE" ]; then
     log_error "Namespace cannot be empty."
     exit 1
 fi
+if ! [[ "$NAMESPACE" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; then
+    log_error "Invalid Kubernetes Namespace: '${NAMESPACE}'. Must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character."
+    exit 1
+fi
 log_info "Using VSPHERE NAMESPACE: ${NAMESPACE}"
 
-log_info "--- Getting a valid Photon 5.0 VMI  ---"
-VMI=$(kubectl get vmi -n "${NAMESPACE}" -o jsonpath='{.items[?(@.status.productInfo.version=="5.0")].metadata.name}')
-if [ -z "$VMI" ]; then
-        log_error "Vaid Photon 5.0 VMI not found in namespace '${NAMESPACE}'. Please ensure a valid Photon 5.0 VMI is available."
-        exit 1
+log_info "--- Getting a valid Photon 5.0 VMI ---"
+VMI_LIST=$(kubectl get vmi -n "${NAMESPACE}" -o jsonpath='{range .items[?(@.status.productInfo.version=="5.0")]}{.metadata.name}{" "}{end}')
+# Count the number of VMIs found
+IFS=' ' read -r -a VMI_ARRAY <<< "$VMI_LIST"
+NUM_VMIS=${#VMI_ARRAY[@]}
+
+if [ "$NUM_VMIS" -eq 0 ]; then
+    log_error "No Photon 5.0 VMI found in namespace '${NAMESPACE}'. Please ensure a valid Photon 5.0 VMI is available."
+    exit 1
+elif [ "$NUM_VMIS" -gt 1 ]; then
+    log_error "Multiple Photon 5.0 VMIs found in namespace '${NAMESPACE}': ${VMI_LIST}"
+    log_error "Please ensure only one relevant Photon 5.0 VMI exists or refine the selection criteria in the script."
+    exit 1
+else
+    VMI="${VMI_ARRAY[0]}"
+    log_info "Using Photon 5.0 VMI: ${VMI}"
 fi
 
 read -rp "Enter the STORAGECLASS where the registry will be installed: " STORAGECLASS
 if [ -z "$STORAGECLASS" ]; then
     log_error "storageClass cannot be empty."
+    exit 1
+fi
+if ! [[ "$STORAGECLASS" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$ ]]; then
+    # This regex is a common one for K8s names, allowing for domain-like prefixes too.
+    log_error "Invalid Kubernetes StorageClass name: '${STORAGECLASS}'. Generally, it consists of lower case alphanumeric characters, '-', or '.', and must start and end with an alphanumeric character."
     exit 1
 fi
 log_info "Using STORAGECLASS: ${STORAGECLASS}"
@@ -260,6 +280,8 @@ if ! ssh-keygen -t rsa -b 4096 -f ./id_rsa -N "" >/dev/null 2>&1; then
     log_error "Failed to generate SSH key pair using ssh-keygen."
     exit 1
 fi
+chmod 600 ./id_rsa
+log_info "Set permissions for ./id_rsa to 600."
 SSH_PUB_KEY=$(cat ./id_rsa.pub || echo '')
 if [ -z "$SSH_PUB_KEY" ]; then
     log_error "SSH public key file id_rsa.pub is empty or not found after generation."
@@ -360,11 +382,6 @@ write_files:
       echo "[INFO] Waiting for registry to be ready..."
       sleep 10
 
-chpasswd:
-  list:
-    root:Passw0rd@123
-  expire: false
-
 runcmd:
   - systemctl enable docker
   - systemctl restart docker
@@ -374,6 +391,9 @@ runcmd:
   - base64 -d /opt/registry/auth/htpasswd.b64 > /opt/registry/auth/htpasswd
   - base64 -d /opt/registry/certs/domain.crt.b64 > /opt/registry/certs/domain.crt
   - base64 -d /opt/registry/certs/domain.key.b64 > /opt/registry/certs/domain.key
+  - chmod 600 /opt/registry/auth/htpasswd
+  - chmod 644 /opt/registry/certs/domain.crt
+  - chmod 600 /opt/registry/certs/domain.key
 EOF
 
 log_info "Generated cloud-init.yaml"
