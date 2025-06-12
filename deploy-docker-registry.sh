@@ -403,7 +403,7 @@ log_info "--- cloud-init Configuration Generation Complete ---"
 
 log_info "--- Creating Kubernetes ConfigMap for cloud-init ---"
 # Deploy ConfigMap with encoded CloudInit
-log_info "Encoding '${cloud_init_file}' to Base64..."
+log_info "Encoding cloud-init file to Base64..."
 CLOUDINIT_B64=$(base64 -w 0 ./cloud-init.yaml)
 if [ -z "$CLOUDINIT_B64" ]; then
     log_error "Failed to encode cloud-init.yaml to Base64 or file is empty."
