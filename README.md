@@ -36,8 +36,8 @@ Before running this script, ensure you have the following:
         docker save registry:2 -o registry.tar
         ```
     *   This file must be present in the same directory where you run the `deploy-docker-registry.sh` script.
-3.  **vSphere with Tanzu Environment**:
-    *   Access to a vSphere with Tanzu Supervisor Cluster and a Namespace where you can deploy resources.
+3.  **vSphere Supervisor Environment**:
+    *   Access to a vSphere Supervisor Cluster and a Namespace where you can deploy resources.
     *   Sufficient permissions to create PVCs, Services, VMs, Secrets, and ConfigMaps.
 4.  **Photon 5.0 VMI**:
     *   A valid and **unique** Photon OS 5.0 VirtualMachineImage (VMI) must be available in the target vSphere Namespace. The script will verify this and exit if zero or multiple such VMIs are found, requiring manual intervention to ensure a single, correct VMI is present.
@@ -48,9 +48,9 @@ Before running this script, ensure you have the following:
 
 The `deploy-docker-registry.sh` script performs the following actions:
 
-1.  **Collects User Input**: Prompts for necessary details like namespace, hostname, credentials, etc.
+1.  **Collects User Input**: Prompts for necessary details, such as namespace, hostname, credentials, etc.
 2.  **Sets up Authentication**: Creates an `htpasswd` file for registry authentication.
-3.  **Handles TLS Certificates**: Allows you to provide your own TLS certificate and key or generates self-signed ones for the specified hostname and LoadBalancer IP.
+3.  **Handles TLS Certificates**: Allows you to provide your own TLS certificate and key or generate self-signed ones for the specified hostname and LoadBalancer IP.
 4.  **Provisions Kubernetes Resources**:
     *   `PersistentVolumeClaim (PVC)`: For registry data storage.
     *   `VirtualMachineService (LoadBalancer)`: To expose the registry externally.
@@ -75,7 +75,7 @@ The script will prompt you for the following information:
 1.  **VSPHERE NAMESPACE**: The Kubernetes namespace in your vSphere with Tanzu environment where the registry and its associated resources will be deployed.
 2.  **STORAGECLASS**: The name of the Kubernetes StorageClass to be used for the registry's persistent storage.
 3.  **HOSTNAME**: The fully qualified domain name (FQDN) for your registry (e.g., `registry.yourcompany.com`). This will be used for the TLS certificate.
-4.  **USERNAME**: The username for authenticating to the Docker registry (for pushing/pulling images).
+4.  **USERNAME**: The username used for authenticating to the Docker registry (for pushing and pulling images).
 5.  **PASSWORD**: The password for the registry user.
 6.  **Provide TLS cert and key files? (y/n)**:
     *   `y`: You will be prompted for the paths to your existing TLS certificate (`.crt`) and private key (`.key`) files.
@@ -150,12 +150,12 @@ docker pull $HOSTNAME/my-image:latest
 *   **Passwords**: Choose strong, unique passwords for the registry user.
 *   **TLS Certificates**:
     *   For production environments, it is **highly recommended** to use certificates issued by a trusted Certificate Authority (CA) instead of the self-signed option.
-    *   If using self-signed certificates, Docker clients will need to be configured to trust the certificate. This typically involves placing the `domain.crt` (generated or provided) into the Docker daemon's certificate directory (e.g., `/etc/docker/certs.d/$HOSTNAME/ca.crt` on Linux clients) and restarting the Docker daemon.
-*   **VM Root Access**: Previously, the VM had a default root password set by `cloud-init`. This has been **removed** to enhance security. The primary administrative user is `vmware-system-user`, which is configured with passwordless `sudo` privileges. All administrative tasks on the VM should be performed using this user (e.g., `sudo some-command`). Direct root login with a password is not configured.
+    *   If using self-signed certificates, Docker clients must be configured to trust the certificate. This typically involves placing the `domain.crt` (generated or provided) into the Docker daemon's certificate directory (e.g., `/etc/docker/certs.d/$HOSTNAME/ca.crt` on Linux clients) and restarting the Docker daemon.
+*   **VM Root Access**: The primary user is `vmware-system-user`. All administrative tasks on the VM should be performed using this user. Direct root login with a password is not configured.
 *   **SSH Access**:
     *   The script uses `StrictHostKeyChecking=no` and `UserKnownHostsFile=/dev/null` for `scp` and `ssh` operations during setup. This is for automation convenience but disables protection against man-in-the-middle (MITM) attacks during the script's execution. This risk is confined to the script's runtime.
     *   The generated SSH private key (`id_rsa`) is used to configure the VM and then deleted from the deployment machine by the `cleanup` function. Access to the `vmware-system-user` is via the public key injected into the VM.
-*   **`registry.tar` Integrity**: The script does not verify the integrity or source of the `registry.tar` file. Ensure you are using an official and untampered Docker registry image.
+*   **`registry.tar` Integrity**: The script does not verify the integrity or source of the `registry.tar` file. Please ensure you are using an official and unmodified Docker registry image.
 *   **File Permissions**:
     *   The script now explicitly sets `0600` permissions on the locally generated SSH private key (`id_rsa`) before its use.
     *   Within the VM, the `cloud-init` process now explicitly sets secure permissions after decoding sensitive files:
@@ -163,14 +163,14 @@ docker pull $HOSTNAME/my-image:latest
         *   `0600` for `/opt/registry/certs/domain.key`
         *   `0644` for `/opt/registry/certs/domain.crt`
     *   Users providing their own TLS keys (`CERT_CHOICE=y`) should ensure their private key file also has appropriate restrictive permissions.
-*   **Secrets in Kubernetes**: Registry credentials (htpasswd) and TLS certificates/keys are stored as Kubernetes Secrets. Ensure your Kubernetes RBAC policies restrict access to these secrets appropriately. The script base64 encodes these files before putting them in `cloud-init` which is then stored in a ConfigMap; this is not encryption.
+*   **Secrets in Kubernetes**: SSH keys and TLS certificates/keys are stored as Kubernetes Secrets. Please make sure your Kubernetes RBAC policies restrict access to these secrets appropriately. The script base64-encodes these files before placing them in `cloud-init`, which is then stored in a ConfigMap; this is not encryption.
 *   **LoadBalancer Exposure**: The LoadBalancer exposes the registry (port 443) and SSH (port 22) to the network. Ensure your network security rules (firewalls, NSGs) restrict access to these ports as needed.
 
 ## Troubleshooting
 
 *   **LoadBalancer IP Not Assigning**:
     *   Check your Kubernetes cluster's LoadBalancer controller logs.
-    *   Ensure your vSphere environment has available IP addresses in the LoadBalancer pool.
+    *   Please ensure your vSphere environment has available IP addresses in the Load Balancer pool.
     *   The script waits for 5 minutes (60 attempts * 5 seconds); this might need adjustment for slower environments.
 *   **VM Not Starting or Not Reachable**:
     *   Check `kubectl get vm vmware-docker-registry-vm -n $NAMESPACE -o yaml` for status and events.
